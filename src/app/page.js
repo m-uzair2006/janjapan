@@ -130,9 +130,10 @@ export default function Home() {
         <div style={videoOverlayStyles} onClick={() => setShowVideo(false)}>
           <video
             src="/videos/dubai_auction_promotion.mp4"
+            onEnded={() => setShowVideo(false)}
             controls
             autoPlay
-            style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '8px' }}
+            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '8px' }}
             onClick={e => e.stopPropagation()}
           />
         </div>
@@ -143,7 +144,7 @@ export default function Home() {
           className="flex p-3 w-full items-center justify-center"
           style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
         >
-          <h1 className="text-7xl">Stock No. {car.lot_no}</h1>
+          <h1 className="text-7xl">Stock No. {car.stock_no}</h1>
         </div>
 
         <div
