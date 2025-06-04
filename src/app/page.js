@@ -13,14 +13,11 @@ const fetchCarsAPI = async () => {
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch cars")
-  }
+  if (!res.ok) throw new Error("Failed to fetch cars")
 
   const data = await res.json()
   if (!data.success) throw new Error("API error: " + data.message)
 
-  // Flatten car details with auction date once here
   return data.data.flatMap(auction =>
     auction.car_details.map(car => ({
       ...car,
@@ -34,53 +31,44 @@ export default function Home() {
   const [fadeIn, setFadeIn] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showVideo, setShowVideo] = useState(false)
-
-  // Ref to control timers and avoid stale closures
   const timerRef = useRef(null)
 
-  // React Query to fetch cars, cache & refetch automatically
- const { data: cars, error, isLoading } = useQuery({
-  queryKey: ['cars'],
-  queryFn: fetchCarsAPI,
-  retry: 2,
-  staleTime: 1000 * 60 * 5, // cache for 5 mins
-  refetchOnWindowFocus: false,
-})
+  const { data: cars, error, isLoading } = useQuery({
+    queryKey: ['cars'],
+    queryFn: fetchCarsAPI,
+    retry: 2,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  })
 
-  // Redirect to login if no token
   useEffect(() => {
     if (!localStorage.getItem("token")) {
       router.push("/login")
     }
   }, [router])
 
-  // Slideshow effect with fade using a single interval and timeout
   useEffect(() => {
-    if (!cars || cars.length === 0) return
+    if (!cars || cars.length === 0 || showVideo) return
 
-    // Clear previous timer if any
     if (timerRef.current) clearTimeout(timerRef.current)
 
-    // Function to run fade out/in and change slide
     const slideShow = () => {
-      setFadeIn(false) // fade out
+      setFadeIn(false)
 
       timerRef.current = setTimeout(() => {
         setCurrentIndex(prev => (prev + 1) % cars.length)
-        setFadeIn(true) // fade in
+        setFadeIn(true)
       }, 500)
     }
 
-    // Start the slideshow interval
-    const interval = setInterval(slideShow, 4000)
+    const interval = setInterval(slideShow, 5000)
 
     return () => {
       clearInterval(interval)
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [cars])
+  }, [cars, showVideo])
 
-  // Keyboard handler for space bar to toggle video
   const handleKeyDown = useCallback(e => {
     if (e.code === "Space") {
       e.preventDefault()
@@ -93,7 +81,6 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [handleKeyDown])
 
-  // Inline styles for fade and video overlay
   const fadeStyles = {
     visible: {
       opacity: 1,
@@ -119,26 +106,29 @@ export default function Home() {
     zIndex: 1000,
   }
 
-  // Handle loading or error states
-  if (isLoading) return (
-  <div className="w-full h-screen flex items-center justify-center bg-black">
-    <div className=" rounded-full animate-spin  h-20 w-20  border-r-7  border-b-7 border-white"></div>
-  </div>
-)
+  const spinnerStyles = {
+    wrapper: "fixed top-0 left-0 w-full h-full bg-black flex justify-center items-center z-50",
+    spinner: "border-8 border-white border-t-transparent rounded-full w-24 h-24 animate-spin"
+  }
+
+  if (isLoading) {
+    return (
+      <div className={spinnerStyles.wrapper}>
+        <div className={spinnerStyles.spinner}></div>
+      </div>
+    )
+  }
+
   if (error) return <div className="text-red-500 text-center mt-20">Error: {error.message}</div>
   if (!cars || cars.length === 0) return <div className="text-white text-center mt-20">No cars found</div>
 
   const car = cars[currentIndex]
 
   return (
-
     <div className="w-full h-screen flex flex-col bg-black text-white relative">
-      {/* Video Overlay */}
       {showVideo && (
         <div style={videoOverlayStyles} onClick={() => setShowVideo(false)}>
           <video
-
-            preload="auto"
             src="/videos/dubai_auction_promotion.mp4"
             controls
             autoPlay
@@ -148,9 +138,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Content hides when video open */}
       <div style={showVideo ? { display: 'none' } : {}}>
-        {/* Header */}
         <div
           className="flex p-3 w-full items-center justify-center"
           style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
@@ -158,7 +146,6 @@ export default function Home() {
           <h1 className="text-7xl">Stock No. {car.lot_no}</h1>
         </div>
 
-        {/* Main Content */}
         <div
           className="flex-1 flex w-full"
           style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
@@ -206,14 +193,13 @@ export default function Home() {
                   width={450}
                   height={600}
                   className="max-[1600px]:w-[400px]"
-                  priority={i === 0} // prioritize first image loading
+                  priority={i === 0}
                 />
               ))}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div
           className="w-full flex py-4 items-center justify-center gap-2"
           style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
@@ -223,6 +209,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-
   )
 }
