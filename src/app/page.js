@@ -120,7 +120,11 @@ export default function Home() {
   }
 
   // Handle loading or error states
-  if (isLoading) return <div className="text-white text-center mt-20">Loading cars...</div>
+  if (isLoading) return (
+  <div className="w-full h-screen flex items-center justify-center bg-black">
+    <div className=" rounded-full animate-spin  h-20 w-20  border-r-7  border-b-7 border-white"></div>
+  </div>
+)
   if (error) return <div className="text-red-500 text-center mt-20">Error: {error.message}</div>
   if (!cars || cars.length === 0) return <div className="text-white text-center mt-20">No cars found</div>
 
