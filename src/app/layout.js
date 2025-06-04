@@ -1,6 +1,6 @@
 import "./globals.css";
 import { fontPrimaryBold } from "@/lib/fonts";
-
+import ReactQueryProvider from "@/custom-components/ReactQueryProvider"
 
 
 export const metadata = {
@@ -10,6 +10,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
+    <ReactQueryProvider>
+      
     <html lang="en">
       <body
         className={`${fontPrimaryBold.className} bg-black`}
@@ -17,5 +19,6 @@ export default function RootLayout({ children }) {
         {children}
       </body>
     </html>
+    </ReactQueryProvider>
   );
 }

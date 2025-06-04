@@ -1,185 +1,224 @@
 'use client'
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { useQuery } from "@tanstack/react-query"
+
+const fetchCarsAPI = async () => {
+  const token = localStorage.getItem("token")
+  if (!token) throw new Error("No token found")
+
+  const res = await fetch("https://invoice.njpurchase.com/api/car-auction-master/auction-cars", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch cars")
+  }
+
+  const data = await res.json()
+  if (!data.success) throw new Error("API error: " + data.message)
+
+  // Flatten car details with auction date once here
+  return data.data.flatMap(auction =>
+    auction.car_details.map(car => ({
+      ...car,
+      auction_date: auction.auction_date,
+    }))
+  )
+}
 
 export default function Home() {
   const router = useRouter()
-  const [tokenExists, setTokenExists] = useState(false)
-  const [cars, setCars] = useState([])
+  const [fadeIn, setFadeIn] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [fade, setFade] = useState(true) // For fade animation
-  const [showVideo, setShowVideo] = useState(false) // Show/hide video overlay
-  const videoRef = useRef(null)
+  const [showVideo, setShowVideo] = useState(false)
 
+  // Ref to control timers and avoid stale closures
+  const timerRef = useRef(null)
+
+  // React Query to fetch cars, cache & refetch automatically
+ const { data: cars, error, isLoading } = useQuery({
+  queryKey: ['cars'],
+  queryFn: fetchCarsAPI,
+  retry: 2,
+  staleTime: 1000 * 60 * 5, // cache for 5 mins
+  refetchOnWindowFocus: false,
+})
+
+  // Redirect to login if no token
   useEffect(() => {
-    const token = localStorage.getItem("token")
-    if (!token) {
+    if (!localStorage.getItem("token")) {
       router.push("/login")
-    } else {
-      setTokenExists(true)
     }
   }, [router])
 
+  // Slideshow effect with fade using a single interval and timeout
   useEffect(() => {
-    if (tokenExists) {
-      fetchCars()
-    }
-  }, [tokenExists])
+    if (!cars || cars.length === 0) return
 
-  useEffect(() => {
-    if (!cars.length) return
+    // Clear previous timer if any
+    if (timerRef.current) clearTimeout(timerRef.current)
 
-    const interval = setInterval(() => {
-      setFade(false)
-      setTimeout(() => {
+    // Function to run fade out/in and change slide
+    const slideShow = () => {
+      setFadeIn(false) // fade out
+
+      timerRef.current = setTimeout(() => {
         setCurrentIndex(prev => (prev + 1) % cars.length)
-        setFade(true)
+        setFadeIn(true) // fade in
       }, 500)
-    }, 4000)
+    }
 
-    return () => clearInterval(interval)
+    // Start the slideshow interval
+    const interval = setInterval(slideShow, 4000)
+
+    return () => {
+      clearInterval(interval)
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
   }, [cars])
 
-  // Toggle video overlay on SPACE press
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.code === "Space") {
-        e.preventDefault()
-        setShowVideo(prev => !prev)
-      }
+  // Keyboard handler for space bar to toggle video
+  const handleKeyDown = useCallback(e => {
+    if (e.code === "Space") {
+      e.preventDefault()
+      setShowVideo(prev => !prev)
     }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  // Play/pause video depending on showVideo state
   useEffect(() => {
-    if (showVideo) {
-      videoRef.current?.play()
-    } else {
-      if (videoRef.current) {
-        videoRef.current.pause()
-        videoRef.current.currentTime = 0
-      }
-    }
-  }, [showVideo])
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleKeyDown])
 
-  const fetchCars = async () => {
-    try {
-      const res = await fetch("https://invoice.njpurchase.com/api/car-auction-master/auction-cars", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
-      })
-      const data = await res.json()
-      if (data.success) {
-        const formatted = data.data.flatMap(auction =>
-          auction.car_details.map(car => ({
-            ...car,
-            auction_date: auction.auction_date,
-          }))
-        )
-        setCars(formatted)
-      }
-    } catch (err) {
-      console.error("Failed to fetch cars", err)
+  // Inline styles for fade and video overlay
+  const fadeStyles = {
+    visible: {
+      opacity: 1,
+      visibility: 'visible',
+      transition: 'opacity 0.5s ease-in-out, visibility 0.5s ease-in-out',
+    },
+    hidden: {
+      opacity: 0,
+      visibility: 'hidden',
+      transition: 'opacity 0.5s ease-in-out, visibility 0.5s ease-in-out',
+      pointerEvents: 'none',
+      userSelect: 'none',
     }
   }
 
-  if (!tokenExists || cars.length === 0) return null
+  const videoOverlayStyles = {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  }
+
+  // Handle loading or error states
+  if (isLoading) return <div className="text-white text-center mt-20">Loading cars...</div>
+  if (error) return <div className="text-red-500 text-center mt-20">Error: {error.message}</div>
+  if (!cars || cars.length === 0) return <div className="text-white text-center mt-20">No cars found</div>
 
   const car = cars[currentIndex]
 
   return (
+
     <div className="w-full h-screen flex flex-col bg-black text-white relative">
-      {/* Header */}
-      <div
-        className="flex p-3 w-full items-center justify-center"
-        style={{
-          opacity: fade ? 1 : 0,
-          transition: "opacity 0.5s ease-in-out",
-        }}
-      >
-        <h1 className="text-7xl">Stock No. {car.lot_no}</h1>
-      </div>
-
-      {/* Main Content */}
-      <div
-        className="flex-1 flex w-full"
-        style={{
-          opacity: fade ? 1 : 0,
-          transition: "opacity 0.5s ease-in-out",
-        }}
-      >
-        <div className="w-full flex h-fit">
-          <div className="w-[50%] mt-3 ml-10 max-[1030px]:ml-2 flex justify-between">
-            <div className="w-full">
-              <div className="text-center">
-                <h1 className="text-7xl text-yellow-600">{car.chassis_no}</h1>
-                <h1 className="text-6xl text-red-500">{car.maker} {car.model}</h1>
-              </div>
-
-              <div className="flex flex-col mt-5 gap-3">
-                {[
-                  { label: "AUCTION DATE", value: car.auction_date },
-                  { label: "YEAR", value: car.registration_year },
-                  { label: "COLOR", value: car.color_name },
-                  { label: "TRANSMISSION", value: car.transmission_name },
-                  { label: "DRIVE", value: car.drive_name },
-                  { label: "CC", value: car.engine_size },
-                  { label: "MILEAGE", value: car.mileage },
-                  { label: "STEERING", value: car.steering_name },
-                  { label: "DOORS", value: car.doors },
-                  { label: "SEATS", value: car.seats },
-                ].map((item, idx) => (
-                  <div className="flex w-full" key={idx}>
-                    <div className="w-full px-3">
-                      <h1 className="text-5xl max-[1600px]:text-3xl">{item.label}</h1>
-                    </div>
-                    <div className="w-full ml-10">
-                      <h1 className="text-5xl text-left max-[1600px]:text-3xl">: {item.value}</h1>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="w-[50%] flex items-center justify-center flex-col mt-10 gap-5">
-            {car.images?.slice(0, 2).map((img, i) => (
-              <Image key={i} src={img} alt="car" width={450} height={600} className="max-[1600px]:w-[400px]" />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div
-        className="w-full flex py-4 items-center justify-center gap-2"
-        style={{
-          opacity: fade ? 1 : 0,
-          transition: "opacity 0.5s ease-in-out",
-        }}
-      >
-        <Image src="/logo.png" height={120} width={120} alt="logo" />
-        <h1 className="text-4xl text-yellow-600">WWW.NAZARJAPAN.COM</h1>
-      </div>
-
       {/* Video Overlay */}
       {showVideo && (
-        <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
+        <div style={videoOverlayStyles} onClick={() => setShowVideo(false)}>
           <video
-            ref={videoRef}
+
+            preload="auto"
             src="/videos/dubai_auction_promotion.mp4"
-            className="max-w-full max-h-full rounded-md shadow-lg"
-            controls={true}
+            controls
             autoPlay
-            onEnded={() => setShowVideo(false)}
+            style={{ maxWidth: '90%', maxHeight: '90%', borderRadius: '8px' }}
+            onClick={e => e.stopPropagation()}
           />
         </div>
       )}
+
+      {/* Content hides when video open */}
+      <div style={showVideo ? { display: 'none' } : {}}>
+        {/* Header */}
+        <div
+          className="flex p-3 w-full items-center justify-center"
+          style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
+        >
+          <h1 className="text-7xl">Stock No. {car.lot_no}</h1>
+        </div>
+
+        {/* Main Content */}
+        <div
+          className="flex-1 flex w-full"
+          style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
+        >
+          <div className="w-full flex h-fit">
+            <div className="w-[50%] mt-3 ml-10 max-[1030px]:ml-2 flex justify-between">
+              <div className="w-full">
+                <div className="text-center">
+                  <h1 className="text-6xl text-yellow-600">{car.chassis_no}</h1>
+                  <h1 className="text-5xl text-red-500">{car.maker} {car.model}</h1>
+                </div>
+
+                <div className="flex flex-col mt-5 gap-3">
+                  {[
+                    { label: "AUCTION DATE", value: car.auction_date },
+                    { label: "YEAR", value: car.registration_year },
+                    { label: "COLOR", value: car.color_name },
+                    { label: "TRANSMISSION", value: car.transmission_name },
+                    { label: "DRIVE", value: car.drive_name },
+                    { label: "CC", value: car.engine_size },
+                    { label: "MILEAGE", value: car.mileage },
+                    { label: "STEERING", value: car.steering_name },
+                    { label: "DOORS", value: car.doors },
+                    { label: "SEATS", value: car.seats },
+                  ].map((item, idx) => (
+                    <div className="flex w-full" key={idx}>
+                      <div className="w-full px-3">
+                        <h1 className="text-5xl max-[1600px]:text-3xl">{item.label}</h1>
+                      </div>
+                      <div className="w-full ml-10">
+                        <h1 className="text-5xl text-left max-[1600px]:text-3xl">: {item.value}</h1>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="w-[50%] flex items-center justify-center flex-col mt-10 gap-5">
+              {car.images?.slice(0, 2).map((img, i) => (
+                <Image
+                  key={i}
+                  src={img}
+                  alt="car"
+                  width={450}
+                  height={600}
+                  className="max-[1600px]:w-[400px]"
+                  priority={i === 0} // prioritize first image loading
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          className="w-full flex py-4 items-center justify-center gap-2"
+          style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
+        >
+          <Image src="/logo.png" height={120} width={120} alt="logo" priority />
+          <h1 className="text-4xl text-yellow-600">WWW.NAZARJAPAN.COM</h1>
+        </div>
+      </div>
     </div>
+
   )
 }
