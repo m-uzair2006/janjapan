@@ -1,5 +1,7 @@
 'use client'
 import { useState,useEffect } from "react"
+import { Eye, EyeOff } from "lucide-react"
+
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -13,6 +15,8 @@ import { Label } from "@/components/ui/label"
 export function LoginForm({ className, ...props }) {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [tokenExists, setTokenExists] = useState(false)
   const [error, setError] = useState("")
@@ -83,18 +87,25 @@ export function LoginForm({ className, ...props }) {
                   required
                 />
               </div>
-              <div className="grid gap-3">
-                <Label className='text-2xl' htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  className='h-[50px]'
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter Password"
-                  required
-                />
-              </div>
+             <div className="grid gap-3 relative">
+  <Label className='text-2xl' htmlFor="password">Password</Label>
+  <Input
+    id="password"
+    className='h-[50px] pr-12'
+    type={showPassword ? "text" : "password"}
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    placeholder="Enter Password"
+    required
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword(prev => !prev)}
+    className="absolute hover:cursor-pointer right-3 top-[58px] text-white"
+  >
+    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+  </button>
+</div>
 
               {error && <p className="text-red-500 text-sm">{error}</p>}
               {success && <p className="text-green-500 text-sm">{success}</p>}
