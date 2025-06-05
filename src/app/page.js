@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useQuery } from "@tanstack/react-query"
 
+// Fetch cars API
 const fetchCarsAPI = async () => {
   const token = localStorage.getItem("token")
   if (!token) throw new Error("No token found")
@@ -22,10 +23,85 @@ const fetchCarsAPI = async () => {
     auction.car_details.map(car => ({
       ...car,
       auction_date: auction.auction_date,
+      auction_time: auction.start_date_time
     }))
   )
 }
 
+// Get time difference function
+function getTimeUntilAuctionDate(auctionDateStr, auctionTimeStr) {
+  if (!auctionDateStr || !auctionTimeStr) {
+    return {
+      expired: true,
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      message: "Invalid auction date or time"
+    }
+  }
+
+  const auctionDateTimeStr = `${auctionDateStr}T${auctionTimeStr}` // e.g., "2025-06-12T08:15:00"
+  const auctionDate = new Date(auctionDateTimeStr)
+  const now = new Date()
+
+  const diffMs = auctionDate.getTime() - now.getTime()
+
+  if (isNaN(diffMs)) {
+    return {
+      expired: true,
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      message: "Invalid auction date or time"
+    }
+  }
+
+  if (diffMs <= 0) {
+    return {
+      expired: true,
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      message: "Auction has started"
+    }
+  }
+
+  const totalSeconds = Math.floor(diffMs / 1000)
+  const days = Math.floor(totalSeconds / (3600 * 24))
+  const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  return {
+    expired: false,
+    days,
+    hours,
+    minutes,
+    seconds,
+    message: `${days}d ${hours}h ${minutes}m ${seconds}s`
+  }
+}
+
+// Custom countdown hook
+function useAuctionCountdown(auctionDateStr, auctionTimeStr) {
+  const [timeLeft, setTimeLeft] = useState(() =>
+    getTimeUntilAuctionDate(auctionDateStr, auctionTimeStr)
+  )
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(getTimeUntilAuctionDate(auctionDateStr, auctionTimeStr))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [auctionDateStr, auctionTimeStr])
+
+  return timeLeft
+}
+// Component
 export default function Home() {
   const router = useRouter()
   const [fadeIn, setFadeIn] = useState(true)
@@ -41,6 +117,9 @@ export default function Home() {
     refetchOnWindowFocus: false,
   })
 
+  const car = cars?.[currentIndex]
+const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time ?? "")
+
   useEffect(() => {
     if (!localStorage.getItem("token")) {
       router.push("/login")
@@ -49,12 +128,10 @@ export default function Home() {
 
   useEffect(() => {
     if (!cars || cars.length === 0 || showVideo) return
-
     if (timerRef.current) clearTimeout(timerRef.current)
 
     const slideShow = () => {
       setFadeIn(false)
-
       timerRef.current = setTimeout(() => {
         setCurrentIndex(prev => (prev + 1) % cars.length)
         setFadeIn(true)
@@ -119,19 +196,21 @@ export default function Home() {
     )
   }
 
-  if (error) return <div className="text-red-500 text-center mt-20">Error: {error.message}</div>
-  if (!cars || cars.length === 0) return <div className="text-white text-center mt-20">No cars found</div>
+  if (error) {
+    return <div className="text-red-500 text-center mt-20">Error: {error.message}</div>
+  }
 
-  const car = cars[currentIndex]
+  if (!cars || cars.length === 0) {
+    return <div className="text-white text-center mt-20">No cars found</div>
+  }
 
   return (
-    <div className="w-full h-screen flex flex-col bg-black text-white relative">
+    <div id="est" className="w-full h-screen justify-end flex flex-col bg-black text-white relative">
       {showVideo && (
         <div style={videoOverlayStyles} onClick={() => setShowVideo(false)}>
           <video
             src="/videos/dubai_auction_promotion.mp4"
             onEnded={() => setShowVideo(false)}
-            controls
             autoPlay
             style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '8px' }}
             onClick={e => e.stopPropagation()}
@@ -141,10 +220,16 @@ export default function Home() {
 
       <div style={showVideo ? { display: 'none' } : {}}>
         <div
-          className="flex p-3 w-full items-center justify-center"
-          style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
+          className="flex p-3 w-full items-center"
+        
         >
-          <h1 className="text-7xl">Stock No. {car.stock_no}</h1>
+          <div className="h-fit w-fit items-center flex gap-1">
+            <Image src="/logo.png" height={200} width={180} alt="logo" priority />
+           
+          </div>
+          <div   style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="flex w-full items-center justify-center">
+            <h1 className="text-7xl">Stock No. {car.stock_no}</h1>
+          </div>
         </div>
 
         <div
@@ -160,9 +245,7 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col mt-5 gap-3">
-                  {[
-                    { label: "AUCTION DATE", value: car.auction_date },
-                    { label: "YEAR", value: car.registration_year },
+                  {[{ label: "YEAR", value: car.registration_year },
                     { label: "COLOR", value: car.color_name },
                     { label: "TRANSMISSION", value: car.transmission_name },
                     { label: "DRIVE", value: car.drive_name },
@@ -194,7 +277,7 @@ export default function Home() {
                   width={450}
                   height={600}
                   className="max-[1600px]:w-[400px]"
-                  priority={i === 0}
+                  priority
                 />
               ))}
             </div>
@@ -202,11 +285,11 @@ export default function Home() {
         </div>
 
         <div
-          className="w-full flex py-4 items-center justify-center gap-2"
-          style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}
+          className="w-full bg-yellow-600 py-4 flex items-center justify-between px-3 mt-3 gap-2"
+        
         >
-          <Image src="/logo.png" height={120} width={120} alt="logo" priority />
-          <h1 className="text-4xl text-yellow-600">WWW.NAZARJAPAN.COM</h1>
+          <h1 className="text-5xl  animate-pulse">{countdown.expired ? "Time Left 00:00:00" : `Time Left: ${countdown.message}`}</h1>
+          <h1 className="text-5xl">AUCTION DATE: {car.auction_date}</h1>
         </div>
       </div>
     </div>

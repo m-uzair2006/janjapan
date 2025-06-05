@@ -11,9 +11,10 @@
 
 @layer utilities {
   
-    @media (max-height: 900px) {
+    @media (max-height: 858px) {
       #est{
         height: fit-content;
+        overflow-y:auto;
       }
   
     }
