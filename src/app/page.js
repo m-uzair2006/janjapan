@@ -205,7 +205,7 @@ const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time
   }
 
   return (
-    <div id="est" className="w-full h-screen justify-end flex flex-col bg-black text-white relative">
+    <div id="est" className="w-full h-screen justify-start flex flex-col bg-black text-white relative">
       {showVideo && (
         <div style={videoOverlayStyles} onClick={() => setShowVideo(false)}>
           <video
@@ -218,18 +218,21 @@ const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time
         </div>
       )}
 
-      <div style={showVideo ? { display: 'none' } : {}}>
+      <div className=" h-full" style={showVideo ? { display: 'none' } : {}}>
         <div
-          className="flex p-3 w-full items-center"
+          className="flex p-3 w-full items-center justify-between"
         
         >
-          <div className="h-fit w-fit items-center flex gap-1">
+          
             <Image src="/logo.png" height={200} width={180} alt="logo" priority />
            
-          </div>
-          <div   style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="flex w-full items-center justify-center">
-            <h1 className="text-7xl">Stock No. {car.stock_no}</h1>
-          </div>
+         
+          
+            <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}  className="text-7xl">Stock No. {car.stock_no}</h1>
+          
+          
+            <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="text-5xl text-red-500">Re-Auction: 00</h1>
+          
         </div>
 
         <div
@@ -284,14 +287,14 @@ const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time
           </div>
         </div>
 
-        <div
-          className="w-full bg-yellow-600 py-4 flex items-center justify-between px-3 mt-3 gap-2"
+      </div>
+        {!showVideo && <div
+          className="w-full bg-yellow-600 py-4 h-auto flex items-center justify-between px-3 mt-3 gap-2"
         
         >
-          <h1 className="text-5xl  animate-pulse">{countdown.expired ? "Time Left 00:00:00" : `Time Left: ${countdown.message}`}</h1>
+          <h1 className="text-5xl  animate-pulse">{countdown.expired ? "TIME LEFT 00:00:00" : `Time Left: ${countdown.message}`}</h1>
           <h1 className="text-5xl">AUCTION DATE: {car.auction_date}</h1>
-        </div>
-      </div>
+        </div>}
     </div>
   )
 }
