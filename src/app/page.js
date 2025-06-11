@@ -31,42 +31,23 @@ const fetchCarsAPI = async () => {
 // Get time difference function
 function getTimeUntilAuctionDate(auctionDateStr, auctionTimeStr) {
   if (!auctionDateStr || !auctionTimeStr) {
-    return {
-      expired: true,
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-      message: "Invalid auction date or time"
-    }
+    return { expired: true, days: 0, hours: 0, minutes: 0, seconds: 0, message: "Invalid auction date or time" }
   }
 
-  const auctionDateTimeStr = `${auctionDateStr}T${auctionTimeStr}` // e.g., "2025-06-12T08:15:00"
-  const auctionDate = new Date(auctionDateTimeStr)
+  // Convert from "DD-MM-YYYY" to "YYYY-MM-DD"
+  const [day, month, year] = auctionDateStr.split("-")
+  const isoDateStr = `${year}-${month}-${day}T${auctionTimeStr}`
+  const auctionDate = new Date(isoDateStr)
   const now = new Date()
 
   const diffMs = auctionDate.getTime() - now.getTime()
 
   if (isNaN(diffMs)) {
-    return {
-      expired: true,
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-      message: "Invalid auction date or time"
-    }
+    return { expired: true, days: 0, hours: 0, minutes: 0, seconds: 0, message: "Invalid auction date or time" }
   }
 
   if (diffMs <= 0) {
-    return {
-      expired: true,
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-      message: "Auction has started"
-    }
+    return { expired: true, days: 0, hours: 0, minutes: 0, seconds: 0, message: "Auction has started" }
   }
 
   const totalSeconds = Math.floor(diffMs / 1000)
@@ -101,6 +82,7 @@ function useAuctionCountdown(auctionDateStr, auctionTimeStr) {
 
   return timeLeft
 }
+
 // Component
 export default function Home() {
   const router = useRouter()
@@ -118,7 +100,9 @@ export default function Home() {
   })
 
   const car = cars?.[currentIndex]
-const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time ?? "")
+  const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time ?? "")
+  console.log(countdown)
+  console.log(car)
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -221,18 +205,19 @@ const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time
       <div className=" h-full" style={showVideo ? { display: 'none' } : {}}>
         <div
           className="flex p-3 w-full items-center justify-between"
-        
+
         >
-          
-            <Image src="/logo.png" height={200} width={180} alt="logo" priority />
-           
-         
-          
-            <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden}  className="text-7xl">Stock No. {car.stock_no}</h1>
-          
-          
-            <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="text-5xl text-red-500">Re-Auction: 00</h1>
-          
+
+          <Image src="/logo.png" height={200} width={180} alt="logo" priority />
+
+
+
+          <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="text-7xl">Stock No. {car.stock_no}</h1>
+
+
+          <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="text-5xl text-red-500">Re-Auction: {car.
+            re_auction_count}</h1>
+
         </div>
 
         <div
@@ -244,19 +229,19 @@ const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time
               <div className="w-full">
                 <div className="text-center">
                   <h1 className="text-6xl text-yellow-600">{car.chassis_no}</h1>
-                  <h1 className="text-5xl text-red-500">{car.maker} {car.model}</h1>
+                  <h1 className="text-6xl text-red-500">{car.maker} {car.model}</h1>
                 </div>
 
                 <div className="flex flex-col mt-5 gap-3">
                   {[{ label: "YEAR", value: car.registration_year },
-                    { label: "COLOR", value: car.color_name },
-                    { label: "TRANSMISSION", value: car.transmission_name },
-                    { label: "DRIVE", value: car.drive_name },
-                    { label: "CC", value: car.engine_size },
-                    { label: "MILEAGE", value: car.mileage },
-                    { label: "STEERING", value: car.steering_name },
-                    { label: "DOORS", value: car.doors },
-                    { label: "SEATS", value: car.seats },
+                  { label: "COLOR", value: car.color_name },
+                  { label: "TRANSMISSION", value: car.transmission_name },
+                  { label: "DRIVE", value: car.drive_name },
+                  { label: "CC", value: car.engine_size },
+                  { label: "MILEAGE", value: car.mileage },
+                  { label: "STEERING", value: car.steering_name },
+                  { label: "DOORS", value: car.doors },
+                  { label: "SEATS", value: car.seats },
                   ].map((item, idx) => (
                     <div className="flex w-full" key={idx}>
                       <div className="w-full px-3">
@@ -288,13 +273,13 @@ const countdown = useAuctionCountdown(car?.auction_date ?? "", car?.auction_time
         </div>
 
       </div>
-        {!showVideo && <div
-          className="w-full bg-yellow-600 py-4 h-auto flex items-center justify-between px-3 mt-3 gap-2"
-        
-        >
-          <h1 className="text-5xl  animate-pulse">{countdown.expired ? "TIME LEFT 00:00:00" : `Time Left: ${countdown.message}`}</h1>
-          <h1 className="text-5xl">AUCTION DATE: {car.auction_date}</h1>
-        </div>}
+      {!showVideo && <div
+        className="w-full bg-yellow-600 py-4 h-auto flex items-center justify-between px-3 mt-3 gap-2"
+
+      >
+        <h1 className="text-5xl  animate-pulse">{countdown.expired ? "TIME LEFT 00:00:00" : `Time Left: ${countdown.message}`}</h1>
+        <h1 className="text-5xl">AUCTION DATE: {car.auction_date}</h1>
+      </div>}
     </div>
   )
 }
