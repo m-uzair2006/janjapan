@@ -215,8 +215,9 @@ export default function Home() {
           <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="text-7xl">Stock No. {car.stock_no}</h1>
 
 
-          <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="text-5xl text-red-500">Re-Auction: {car.
-            re_auction_count}</h1>
+          {/* <h1 style={fadeIn ? fadeStyles.visible : fadeStyles.hidden} className="text-5xl text-red-500">Re-Auction: {car.
+            re_auction_count}</h1> */}
+            <h1  className="text-4xl text-yellow-600">WWW.NAZARJAPAN.COM</h1>
 
         </div>
 
@@ -278,7 +279,7 @@ export default function Home() {
 
       >
         <h1 className="text-5xl  animate-pulse">{countdown.expired ? "TIME LEFT 00:00:00" : `Time Left: ${countdown.message}`}</h1>
-        <h1 className="text-5xl">AUCTION DATE: {car.auction_date}</h1>
+        <h1 className="text-5xl">UPCOMING AUCTION DATE: {car.auction_date}</h1>
       </div>}
     </div>
   )
